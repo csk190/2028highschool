@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>[방탈출] 2028 입시의 비밀</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            touch-action: manipulation; /* Disable double-tap to zoom */
+        }
+        .game-container {
+            background-image: url('https://www.transparenttextures.com/patterns/concrete-wall.png');
+            background-color: #4a5568;
+        }
+        .screen {
+            display: none;
+        }
+        .screen.active {
+            display: flex;
+        }
+        .puzzle-object {
+            cursor: pointer;
+            transition: transform 0.2s, filter 0.2s;
+        }
+        .puzzle-object:hover {
+            transform: scale(1.05);
+            filter: drop-shadow(0 0 15px rgba(255, 255, 100, 0.7));
+        }
+        .inventory-item {
+            cursor: grab;
+            transition: background-color 0.2s;
+        }
+        .inventory-item.selected {
+            background-color: #fefcbf; /* yellow-100 */
+            border: 2px solid #facc15; /* yellow-400 */
+        }
+        .modal {
+            display: none;
+        }
+        .modal.active {
+            display: flex;
+        }
+        .message-box {
+            animation: slide-in 0.5s forwards;
+        }
+        @keyframes slide-in {
+            from { transform: translateY(100%); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        .shake {
+            animation: shake 0.5s;
+        }
+        @keyframes shake {
+            10%, 90% { transform: translate3d(-1px, 0, 0); }
+            20%, 80% { transform: translate3d(2px, 0, 0); }
+            30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+            40%, 60% { transform: translate3d(4px, 0, 0); }
+        }
+        /* Custom scrollbar for better aesthetics */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 8px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #2d3748; /* gray-800 */
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background-color: #718096; /* gray-500 */
+            border-radius: 10px;
+            border: 2px solid #2d3748; /* gray-800 */
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white flex items-center justify-center min-h-screen p-4">
+
+    <div id="game-container" class="game-container w-full max-w-4xl h-[90vh] max-h-[700px] bg-gray-700 rounded-2xl shadow-2xl overflow-hidden relative flex flex-col">
+
+        <!-- Header -->
+        <header class="bg-gray-800 bg-opacity-70 p-3 flex justify-between items-center z-10">
+            <h1 class="text-xl md:text-2xl font-bold text-yellow-300">2028 입시의 비밀</h1>
+            <div class="flex items-center space-x-4">
+                <span id="timer" class="text-lg font-mono bg-black bg-opacity-50 px-3 py-1 rounded-md">15:00</span>
+                <button id="restart-button" class="bg-red-600 hover:bg-red-700 text-white font-bold py-1 px-3 rounded-lg transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd" /></svg>
+                </button>
+            </div>
+        </header>
+
+        <!-- Main Game Area -->
+        <main class="flex-grow relative">
+            <!-- Screen 0: Intro -->
+            <div id="screen-0" class="screen active flex-col items-center justify-center text-center p-8 bg-black bg-opacity-50 h-full">
+                <h2 class="text-4xl font-bold mb-4 text-yellow-200">2028학년도 대입...</h2>
+                <p class="text-lg mb-6 max-w-2xl">
+                    고교학점제가 전면 시행되고, 대입 제도가 완전히 뒤바뀌었다.
+                    <br>당신은 새로운 입시를 치르는 첫 세대.
+                    <br><br>정신을 차려보니, '입학사정관실'에 갇혀 있다.
+                    <br>새로운 제도의 비밀을 풀고, 당신의 잠재력을 증명하여 이곳을 탈출해야만 한다.
+                </p>
+                <button id="start-game-button" class="mt-4 bg-yellow-500 hover:bg-yellow-600 text-gray-900 font-bold py-3 px-8 rounded-lg text-xl transition-transform transform hover:scale-105">
+                    도전 시작
+                </button>
+            </div>
+
+            <!-- Screen 1: The Classroom -->
+            <div id="screen-1" class="screen items-center justify-center p-4 h-full">
+                <div class="grid grid-cols-3 grid-rows-2 gap-4 w-full h-full">
+                    <!-- 책상 -->
+                    <div id="puzzle-desk" class="puzzle-object col-span-2 row-span-2 bg-gray-600 rounded-lg p-4 flex flex-col justify-between items-center bg-cover bg-center" style="background-image: url('https://placehold.co/800x600/6b7280/ffffff?text=책상');">
+                        <h3 class="text-2xl font-bold bg-black bg-opacity-50 px-3 py-1 rounded">학생의 책상</h3>
+                        <p class="text-lg bg-black bg-opacity-50 px-3 py-1 rounded">무언가 단서가 있을 것 같다.</p>
+                    </div>
+                    <!-- 캐비닛 -->
+                    <div id="puzzle-cabinet" class="puzzle-object bg-gray-600 rounded-lg p-4 flex flex-col justify-between items-center bg-cover bg-center" style="background-image: url('https://placehold.co/400x300/6b7280/ffffff?text=캐비닛');">
+                        <h3 class="text-xl font-bold bg-black bg-opacity-50 px-3 py-1 rounded">잠긴 캐비닛</h3>
+                        <p class="bg-black bg-opacity-50 px-3 py-1 rounded">비밀번호가 필요하다.</p>
+                    </div>
+                    <!-- 문 -->
+                    <div id="puzzle-door" class="puzzle-object bg-gray-600 rounded-lg p-4 flex flex-col justify-between items-center bg-cover bg-center" style="background-image: url('https://placehold.co/400x300/6b7280/ffffff?text=문');">
+                        <h3 class="text-xl font-bold bg-black bg-opacity-50 px-3 py-1 rounded">최종 탈출구</h3>
+                        <p class="bg-black bg-opacity-50 px-3 py-1 rounded">아직은 열리지 않는다.</p>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Inventory -->
+        <footer class="bg-gray-800 bg-opacity-70 p-2 z-10">
+            <div id="inventory" class="flex items-center justify-center space-x-2 h-16">
+                <p class="text-gray-400">인벤토리</p>
+            </div>
+        </footer>
+
+        <!-- Modals -->
+        <div id="modal-container" class="absolute inset-0 z-20">
+            <!-- Puzzle 1: 과목 선택 -->
+            <div id="modal-timetable" class="modal bg-black bg-opacity-80 items-center justify-center p-4">
+                <div class="bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-3xl max-h-[90vh] flex flex-col">
+                    <h3 class="text-2xl font-bold text-yellow-300 mb-4 text-center">Puzzle 1: 미래를 위한 시간표</h3>
+                    <div class="bg-gray-900 p-4 rounded-lg mb-4">
+                        <p class="text-center text-lg">"컴퓨터 과학자가 꿈인 당신. S대학교 컴퓨터공학부에 지원하려 한다. <br>대학은 '전공 관련 교과 이수'를 가장 중요하게 본다고 발표했다. <br>당신의 성공적인 미래를 위해 2학년 때 수강할 **핵심 과목 3개**를 선택하라."</p>
+                    </div>
+                    <div id="subject-list" class="grid grid-cols-2 md:grid-cols-3 gap-4 flex-grow overflow-y-auto custom-scrollbar pr-2">
+                        <!-- 과목 목록이 여기에 동적으로 추가됩니다 -->
+                    </div>
+                    <div class="mt-4 flex justify-between items-center">
+                        <button id="close-timetable-modal" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded">뒤로가기</button>
+                        <button id="submit-timetable" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded disabled:bg-gray-500 disabled:cursor-not-allowed" disabled>선택 완료</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Puzzle 2: 성적표 해석 -->
+            <div id="modal-reportcard" class="modal bg-black bg-opacity-80 items-center justify-center p-4">
+                <div class="bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-2xl max-h-[90vh] flex flex-col">
+                    <h3 class="text-2xl font-bold text-yellow-300 mb-4 text-center">Puzzle 2: 성적표에 숨겨진 암호</h3>
+                    <div class="bg-gray-900 p-4 rounded-lg mb-4 overflow-y-auto custom-scrollbar">
+                        <p class="text-center mb-2">캐비닛을 열기 위한 4자리 비밀번호는 성적표 안에 있다.</p>
+                        <p class="text-center text-yellow-400 font-bold">"상대평가의 그늘을 벗어나, 절대적 성취가 빛나는 곳에 길이 있다."</p>
+                        <table class="w-full text-sm text-left mt-4">
+                            <thead class="text-xs text-gray-300 uppercase bg-gray-700">
+                                <tr>
+                                    <th scope="col" class="px-4 py-2">과목명</th>
+                                    <th scope="col" class="px-4 py-2 text-center">상대등급</th>
+                                    <th scope="col" class="px-4 py-2 text-center">절대성취도</th>
+                                    <th scope="col" class="px-4 py-2 text-center">성취도별 분포비율(A/B/C/D/E)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr class="border-b border-gray-700">
+                                    <td class="px-4 py-2 font-medium">문학</td><td class="px-4 py-2 text-center">2</td><td class="px-4 py-2 text-center">A</td><td class="px-4 py-2 text-center">25.1 / 30.2 / ...</td>
+                                </tr>
+                                <tr class="border-b border-gray-700">
+                                    <td class="px-4 py-2 font-medium">미적분Ⅰ</td><td class="px-4 py-2 text-center">1</td><td class="px-4 py-2 text-center">A</td><td class="px-4 py-2 text-center">12.5 / 25.5 / ...</td>
+                                </tr>
+                                <tr class="border-b border-gray-700">
+                                    <td class="px-4 py-2 font-medium text-green-300">사회문제 탐구</td><td class="px-4 py-2 text-center text-gray-500">-</td><td class="px-4 py-2 text-center">A</td><td class="px-4 py-2 text-center text-green-300">19.5 / 28.3 / 30.1 / ...</td>
+                                </tr>
+                                <tr class="border-b border-gray-700">
+                                    <td class="px-4 py-2 font-medium">화학Ⅱ</td><td class="px-4 py-2 text-center">3</td><td class="px-4 py-2 text-center">B</td><td class="px-4 py-2 text-center">8.8 / 15.6 / ...</td>
+                                </tr>
+                                <tr class="border-b border-gray-700">
+                                    <td class="px-4 py-2 font-medium text-green-300">과학과제 탐구</td><td class="px-4 py-2 text-center text-gray-500">-</td><td class="px-4 py-2 text-center">A</td><td class="px-4 py-2 text-center text-green-300">20.4 / 31.2 / 25.5 / ...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="flex items-center justify-center space-x-2 my-4">
+                        <input type="text" id="cabinet-input-1" class="w-12 h-14 text-center text-3xl bg-gray-700 rounded border border-gray-500 focus:outline-none focus:ring-2 focus:ring-yellow-400" maxlength="1">
+                        <input type="text" id="cabinet-input-2" class="w-12 h-14 text-center text-3xl bg-gray-700 rounded border border-gray-500 focus:outline-none focus:ring-2 focus:ring-yellow-400" maxlength="1">
+                        <input type="text" id="cabinet-input-3" class="w-12 h-14 text-center text-3xl bg-gray-700 rounded border border-gray-500 focus:outline-none focus:ring-2 focus:ring-yellow-400" maxlength="1">
+                        <input type="text" id="cabinet-input-4" class="w-12 h-14 text-center text-3xl bg-gray-700 rounded border border-gray-500 focus:outline-none focus:ring-2 focus:ring-yellow-400" maxlength="1">
+                    </div>
+                    <div class="mt-4 flex justify-between items-center">
+                        <button id="close-reportcard-modal" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded">뒤로가기</button>
+                        <button id="submit-cabinet-code" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded">입력</button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Puzzle 3: 수능/학생부 분류 -->
+            <div id="modal-document" class="modal bg-black bg-opacity-80 items-center justify-center p-4">
+                <div class="bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-4xl max-h-[90vh] flex flex-col">
+                    <h3 class="text-2xl font-bold text-yellow-300 mb-4 text-center">Puzzle 3: 평가의 재구성</h3>
+                    <p class="text-center mb-4">캐비닛에서 발견한 '대학 인재상' 문서. 2028 대입의 핵심 평가 요소를 올바르게 분류하여 대학의 평가 기준을 파악하라.</p>
+                    <div class="flex-grow grid grid-cols-1 md:grid-cols-2 gap-4 overflow-hidden">
+                        <!-- 수능 평가 요소 -->
+                        <div class="bg-gray-900 rounded-lg p-4 flex flex-col">
+                            <h4 class="text-xl font-bold text-center text-blue-300 mb-2">수능으로 평가하는 역량</h4>
+                            <div id="csat-zone" class="bg-gray-800 rounded-md min-h-[150px] p-2 flex flex-col gap-2 flex-grow"></div>
+                        </div>
+                        <!-- 학생부 평가 요소 -->
+                        <div class="bg-gray-900 rounded-lg p-4 flex flex-col">
+                            <h4 class="text-xl font-bold text-center text-green-300 mb-2">학생부로 평가하는 역량</h4>
+                            <div id="record-zone" class="bg-gray-800 rounded-md min-h-[150px] p-2 flex flex-col gap-2 flex-grow"></div>
+                        </div>
+                    </div>
+                     <div id="evaluation-items" class="mt-4 p-2 bg-gray-900 rounded-lg flex flex-wrap justify-center gap-2">
+                        <!-- 평가 항목들이 여기에 동적으로 추가됩니다 -->
+                    </div>
+                    <div class="mt-4 flex justify-between items-center">
+                        <button id="close-document-modal" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded">뒤로가기</button>
+                        <button id="submit-evaluation" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded">분류 완료</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Final Puzzle: Door Keypad -->
+            <div id="modal-door" class="modal bg-black bg-opacity-80 items-center justify-center p-4">
+                <div class="bg-gray-800 rounded-lg shadow-xl p-8 w-full max-w-sm">
+                    <h3 class="text-2xl font-bold text-yellow-300 mb-4 text-center">최종 탈출구</h3>
+                    <p id="door-clue" class="text-center mb-4 text-gray-300">모든 것을 관통하는 핵심 원칙. 학생이 배움의 주인이 되는 힘. 그 단어를 입력하라.</p>
+                    <input type="text" id="door-password" class="w-full p-3 text-center text-2xl bg-gray-700 rounded border border-gray-500 focus:outline-none focus:ring-2 focus:ring-yellow-400 uppercase" placeholder="PASSWORD">
+                    <div class="mt-6 flex justify-between items-center">
+                        <button id="close-door-modal" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded">뒤로가기</button>
+                        <button id="submit-door-password" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded">탈출 시도</button>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Message Box -->
+        <div id="message-box" class="absolute bottom-20 left-1/2 -translate-x-1/2 w-11/12 max-w-md bg-white text-gray-800 p-4 rounded-lg shadow-lg z-30 hidden">
+            <p id="message-text" class="text-center font-semibold"></p>
+        </div>
+
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- Game State ---
+            const state = {
+                timer: 900, // 15 minutes
+                timerInterval: null,
+                currentScreen: 0,
+                inventory: [],
+                selectedInventoryItem: null,
+                puzzlesSolved: {
+                    timetable: false,
+                    cabinet: false,
+                    document: false,
+                },
+            };
+
+            // --- DOM Elements ---
+            const screens = document.querySelectorAll('.screen');
+            const timerEl = document.getElementById('timer');
+            const inventoryEl = document.getElementById('inventory');
+            const messageBox = document.getElementById('message-box');
+            const messageText = document.getElementById('message-text');
+
+            // --- Puzzle 1 (Timetable) Elements ---
+            const puzzleDesk = document.getElementById('puzzle-desk');
+            const timetableModal = document.getElementById('modal-timetable');
+            const closeTimetableModalBtn = document.getElementById('close-timetable-modal');
+            const subjectListEl = document.getElementById('subject-list');
+            const submitTimetableBtn = document.getElementById('submit-timetable');
+            const subjects = [
+                { id: 'subj1', name: '문학', correct: false }, { id: 'subj2', name: '화법과 언어', correct: false },
+                { id: 'subj3', name: '미적분Ⅰ', correct: true }, { id: 'subj4', name: '확률과 통계', correct: true },
+                { id: 'subj5', name: '경제', correct: false }, { id: 'subj6', name: '물리학Ⅱ', correct: false },
+                { id: 'subj7', name: '기하', correct: true }, { id: 'subj8', name: '사회문제 탐구', correct: false },
+                { id: 'subj9', name: '인공지능 기초', correct: false } // Let's make it 3 core math subjects
+            ];
+            let selectedSubjects = [];
+
+            // --- Puzzle 2 (Cabinet) Elements ---
+            const puzzleCabinet = document.getElementById('puzzle-cabinet');
+            const reportCardModal = document.getElementById('modal-reportcard');
+            const closeReportCardModalBtn = document.getElementById('close-reportcard-modal');
+            const cabinetInputs = [
+                document.getElementById('cabinet-input-1'),
+                document.getElementById('cabinet-input-2'),
+                document.getElementById('cabinet-input-3'),
+                document.getElementById('cabinet-input-4'),
+            ];
+            const submitCabinetCodeBtn = document.getElementById('submit-cabinet-code');
+            const CABINET_CODE = "1928";
+
+            // --- Puzzle 3 (Document) Elements ---
+            const documentModal = document.getElementById('modal-document');
+            const closeDocumentModalBtn = document.getElementById('close-document-modal');
+            const csatZone = document.getElementById('csat-zone');
+            const recordZone = document.getElementById('record-zone');
+            const evaluationItemsContainer = document.getElementById('evaluation-items');
+            const submitEvaluationBtn = document.getElementById('submit-evaluation');
+            const evaluationItems = [
+                { id: 'eval1', text: '기초 학업 역량', zone: 'csat' },
+                { id: 'eval2', text: '심화 물리 역량', zone: 'record' },
+                { id: 'eval3', text: '융합적 사고력 (통합사회/과학)', zone: 'csat' },
+                { id: 'eval4', text: '전공 적합성', zone: 'record' },
+                { id: 'eval5', text: '학업 서사(성장 과정)', zone: 'record' },
+            ];
+            let draggedItem = null;
+
+            // --- Final Puzzle (Door) Elements ---
+            const puzzleDoor = document.getElementById('puzzle-door');
+            const doorModal = document.getElementById('modal-door');
+            const closeDoorModalBtn = document.getElementById('close-door-modal');
+            const doorPasswordInput = document.getElementById('door-password');
+            const submitDoorPasswordBtn = document.getElementById('submit-door-password');
+            const DOOR_PASSWORD = "AGENCY"; // 학생 주도성(Student Agency)
+
+            // --- Buttons ---
+            const startGameBtn = document.getElementById('start-game-button');
+            const restartBtn = document.getElementById('restart-button');
+
+            // --- Game Logic Functions ---
+            
+            function initGame() {
+                // Reset state
+                state.timer = 900;
+                state.currentScreen = 0;
+                state.inventory = [];
+                state.selectedInventoryItem = null;
+                state.puzzlesSolved = { timetable: false, cabinet: false, document: false };
+                
+                // Reset UI
+                if(state.timerInterval) clearInterval(state.timerInterval);
+                state.timerInterval = null;
+                updateTimer();
+                updateInventory();
+                closeAllModals();
+                changeScreen(0);
+                
+                // Reset puzzles
+                initTimetablePuzzle();
+                initCabinetPuzzle();
+                initDocumentPuzzle();
+                initDoorPuzzle();
+
+                // Add image fallbacks
+                document.querySelectorAll('.puzzle-object').forEach(el => {
+                    const bgImg = el.style.backgroundImage;
+                    if (bgImg && bgImg.includes('placehold.co')) {
+                        const url = bgImg.slice(5, -2); // extract url
+                        const img = new Image();
+                        img.src = url;
+                        img.onerror = () => {
+                            el.style.backgroundImage = `url('https://placehold.co/600x400/cccccc/ffffff?text=Error+Loading+Image')`;
+                        }
+                    }
+                });
+            }
+
+            function startGame() {
+                changeScreen(1);
+                startTimer();
+            }
+
+            function startTimer() {
+                if(state.timerInterval) clearInterval(state.timerInterval);
+                state.timerInterval = setInterval(() => {
+                    state.timer--;
+                    updateTimer();
+                    if (state.timer <= 0) {
+                        clearInterval(state.timerInterval);
+                        gameOver("시간 초과! 입시의 벽은 높았습니다...");
+                    }
+                }, 1000);
+            }
+
+            function updateTimer() {
+                const minutes = Math.floor(state.timer / 60).toString().padStart(2, '0');
+                const seconds = (state.timer % 60).toString().padStart(2, '0');
+                timerEl.textContent = `${minutes}:${seconds}`;
+                if (state.timer <= 60) {
+                    timerEl.classList.add('text-red-500', 'animate-pulse');
+                } else {
+                    timerEl.classList.remove('text-red-500', 'animate-pulse');
+                }
+            }
+            
+            function changeScreen(screenIndex) {
+                state.currentScreen = screenIndex;
+                screens.forEach((screen, index) => {
+                    if (index === screenIndex) {
+                        screen.classList.add('active');
+                    } else {
+                        screen.classList.remove('active');
+                    }
+                });
+            }
+            
+            function showMessage(text, duration = 3000) {
+                messageText.textContent = text;
+                messageBox.classList.remove('hidden');
+                setTimeout(() => {
+                    messageBox.classList.add('hidden');
+                }, duration);
+            }
+
+            function gameOver(message) {
+                showMessage(message, 5000);
+                setTimeout(initGame, 5000);
+            }
+
+            function gameWin() {
+                clearInterval(state.timerInterval);
+                const winMessage = `축하합니다! 당신은 2028 입시의 비밀을 모두 풀고, 꿈의 대학에 합격했습니다! (남은 시간: ${timerEl.textContent})`;
+                showMessage(winMessage, 10000);
+                setTimeout(initGame, 10000);
+            }
+
+            function updateInventory() {
+                inventoryEl.innerHTML = '<p class="text-gray-400">인벤토리</p>';
+                state.inventory.forEach(item => {
+                    const itemEl = document.createElement('div');
+                    itemEl.id = `inv-${item.id}`;
+                    itemEl.className = 'inventory-item bg-gray-700 p-2 rounded-lg border-2 border-gray-500';
+                    itemEl.innerHTML = `<span class="text-sm">${item.name}</span>`;
+                    itemEl.onclick = () => selectInventoryItem(item.id);
+                    inventoryEl.appendChild(itemEl);
+                });
+            }
+
+            function addItemToInventory(item) {
+                if (!state.inventory.find(i => i.id === item.id)) {
+                    state.inventory.push(item);
+                    updateInventory();
+                    showMessage(`'${item.name}'을(를) 획득했다!`, 2000);
+                }
+            }
+
+            function selectInventoryItem(itemId) {
+                // This game is simple, so no item selection is needed yet.
+                // This function is a placeholder for future expansion.
+            }
+
+            function openModal(modal) {
+                modal.classList.add('active');
+            }
+
+            function closeModal(modal) {
+                modal.classList.remove('active');
+            }
+            
+            function closeAllModals() {
+                document.querySelectorAll('.modal').forEach(m => m.classList.remove('active'));
+            }
+
+            // --- Puzzle 1: Timetable Logic ---
+            function initTimetablePuzzle() {
+                selectedSubjects = [];
+                subjectListEl.innerHTML = '';
+                subjects.forEach(subject => {
+                    const subjectEl = document.createElement('button');
+                    subjectEl.className = 'subject-choice p-4 bg-gray-700 rounded-lg text-lg hover:bg-gray-600 transition-colors';
+                    subjectEl.textContent = subject.name;
+                    subjectEl.dataset.id = subject.id;
+                    subjectEl.onclick = () => toggleSubjectSelection(subject.id, subjectEl);
+                    subjectListEl.appendChild(subjectEl);
+                });
+                submitTimetableBtn.disabled = true;
+                state.puzzlesSolved.timetable = false;
+            }
+
+            function toggleSubjectSelection(subjectId, el) {
+                const index = selectedSubjects.indexOf(subjectId);
+                if (index > -1) {
+                    selectedSubjects.splice(index, 1);
+                    el.classList.remove('bg-yellow-500', 'text-gray-900');
+                    el.classList.add('bg-gray-700');
+                } else {
+                    if (selectedSubjects.length < 3) {
+                        selectedSubjects.push(subjectId);
+                        el.classList.add('bg-yellow-500', 'text-gray-900');
+                        el.classList.remove('bg-gray-700');
+                    } else {
+                        showMessage("핵심 과목은 3개까지만 선택할 수 있습니다.", 2000);
+                    }
+                }
+                submitTimetableBtn.disabled = selectedSubjects.length !== 3;
+            }
+
+            function solveTimetable() {
+                const correctChoices = subjects.filter(s => s.correct).map(s => s.id);
+                const isCorrect = selectedSubjects.length === 3 && selectedSubjects.every(id => correctChoices.includes(id));
+
+                if (isCorrect) {
+                    state.puzzlesSolved.timetable = true;
+                    showMessage("완벽한 선택! 대학이 원하는 인재상에 부합하는군.", 3000);
+                    addItemToInventory({ id: 'report_card', name: '성적표' });
+                    closeModal(timetableModal);
+                } else {
+                    showMessage("이런... 전공과 관련이 적거나, 너무 쉬운 과목만 선택했군. 다시 생각해봐.", 3000);
+                    timetableModal.classList.add('shake');
+                    setTimeout(() => timetableModal.classList.remove('shake'), 500);
+                }
+            }
+
+            // --- Puzzle 2: Cabinet Logic ---
+            function initCabinetPuzzle() {
+                cabinetInputs.forEach(input => input.value = '');
+                state.puzzlesSolved.cabinet = false;
+            }
+
+            function solveCabinet() {
+                const enteredCode = cabinetInputs.map(input => input.value).join('');
+                if (enteredCode === CABINET_CODE) {
+                    state.puzzlesSolved.cabinet = true;
+                    showMessage("철컥! 캐비닛이 열렸다. 안에서 낡은 서류 뭉치를 발견했다.", 3000);
+                    addItemToInventory({ id: 'document', name: '대학 인재상 문서' });
+                    closeModal(reportCardModal);
+                } else {
+                    showMessage("비밀번호가 틀렸다. 성적표를 다시 자세히 보자.", 2000);
+                    reportCardModal.classList.add('shake');
+                    setTimeout(() => reportCardModal.classList.remove('shake'), 500);
+                }
+            }
+            
+            cabinetInputs.forEach((input, index) => {
+                input.addEventListener('input', () => {
+                    if (input.value && index < cabinetInputs.length - 1) {
+                        cabinetInputs[index + 1].focus();
+                    }
+                });
+                input.addEventListener('keydown', (e) => {
+                    if (e.key === 'Backspace' && !input.value && index > 0) {
+                        cabinetInputs[index - 1].focus();
+                    }
+                });
+            });
+
+            // --- Puzzle 3: Document Logic ---
+            function initDocumentPuzzle() {
+                csatZone.innerHTML = '';
+                recordZone.innerHTML = '';
+                evaluationItemsContainer.innerHTML = '';
+                evaluationItems.forEach(item => {
+                    const itemEl = document.createElement('div');
+                    itemEl.id = item.id;
+                    itemEl.textContent = item.text;
+                    itemEl.dataset.zone = item.zone;
+                    itemEl.className = 'p-2 bg-gray-700 rounded cursor-pointer hover:bg-gray-600';
+                    itemEl.draggable = true;
+                    evaluationItemsContainer.appendChild(itemEl);
+                });
+                state.puzzlesSolved.document = false;
+            }
+
+            function solveDocument() {
+                const csatItems = Array.from(csatZone.children);
+                const recordItems = Array.from(recordZone.children);
+
+                if (csatItems.length + recordItems.length !== evaluationItems.length) {
+                    showMessage("모든 항목을 분류해야 한다.", 2000);
+                    return;
+                }
+
+                const isCsatCorrect = csatItems.every(item => item.dataset.zone === 'csat');
+                const isRecordCorrect = recordItems.every(item => item.dataset.zone === 'record');
+
+                if (isCsatCorrect && isRecordCorrect) {
+                     state.puzzlesSolved.document = true;
+                     showMessage("정확한 분석이다! 문서 뒷면에서 희미한 글씨를 발견했다: 'AGENCY'", 4000);
+                     addItemToInventory({ id: 'final_clue', name: '최종 단서'});
+                     closeModal(documentModal);
+                } else {
+                    showMessage("분류가 잘못되었다. 수능과 학생부의 역할을 다시 생각해보자.", 3000);
+                    documentModal.classList.add('shake');
+                    setTimeout(() => documentModal.classList.remove('shake'), 500);
+                }
+            }
+            
+            // Drag and Drop Logic
+            evaluationItemsContainer.addEventListener('dragstart', e => {
+                if (e.target.draggable) {
+                    draggedItem = e.target;
+                    setTimeout(() => e.target.style.display = 'none', 0);
+                }
+            });
+
+            evaluationItemsContainer.addEventListener('dragend', e => {
+                if(draggedItem) {
+                    setTimeout(() => {
+                        draggedItem.style.display = 'block';
+                        draggedItem = null;
+                    }, 0);
+                }
+            });
+
+            [csatZone, recordZone, evaluationItemsContainer].forEach(zone => {
+                zone.addEventListener('dragover', e => e.preventDefault());
+                zone.addEventListener('drop', e => {
+                    e.preventDefault();
+                    if (draggedItem) {
+                        zone.appendChild(draggedItem);
+                    }
+                });
+            });
+
+            // --- Final Puzzle: Door Logic ---
+            function initDoorPuzzle() {
+                doorPasswordInput.value = '';
+            }
+
+            function solveDoor() {
+                if (doorPasswordInput.value.toUpperCase() === DOOR_PASSWORD) {
+                    gameWin();
+                } else {
+                    showMessage("문이 꿈쩍도 하지 않는다. 마지막 단어가 틀린 것 같다.", 2000);
+                    doorModal.classList.add('shake');
+                    setTimeout(() => doorModal.classList.remove('shake'), 500);
+                }
+            }
+
+            // --- Event Listeners ---
+            startGameBtn.addEventListener('click', startGame);
+            restartBtn.addEventListener('click', initGame);
+
+            puzzleDesk.addEventListener('click', () => {
+                if (!state.puzzlesSolved.timetable) {
+                    openModal(timetableModal);
+                } else {
+                    showMessage("이미 시간표는 완성했다. 이제 성적표를 확인해야지.", 2000);
+                }
+            });
+            closeTimetableModalBtn.addEventListener('click', () => closeModal(timetableModal));
+            submitTimetableBtn.addEventListener('click', solveTimetable);
+
+            // [FIXED] Consolidated event listener for the cabinet
+            puzzleCabinet.addEventListener('click', () => {
+                // Case 4: All relevant puzzles solved.
+                if (state.puzzlesSolved.cabinet && state.puzzlesSolved.document) {
+                    showMessage("캐비닛에서는 더 이상 찾을 것이 없다.", 2000);
+                // Case 3: Solved cabinet puzzle, but not the document puzzle yet.
+                } else if (state.puzzlesSolved.cabinet) {
+                    openModal(documentModal);
+                // Case 2: Have the prerequisite ('report_card'), but haven't solved the cabinet yet.
+                } else if (state.inventory.find(i => i.id === 'report_card')) {
+                    openModal(reportCardModal);
+                // Case 1: Initial state, no prerequisite.
+                } else {
+                    showMessage("캐비닛은 잠겨있다. 먼저 책상부터 살펴보자.", 2000);
+                }
+            });
+
+            closeReportCardModalBtn.addEventListener('click', () => closeModal(reportCardModal));
+            submitCabinetCodeBtn.addEventListener('click', solveCabinet);
+            closeDocumentModalBtn.addEventListener('click', () => closeModal(documentModal));
+            submitEvaluationBtn.addEventListener('click', solveDocument);
+
+            puzzleDoor.addEventListener('click', () => {
+                if (!state.inventory.find(i => i.id === 'final_clue')) {
+                    showMessage("모든 수수께끼를 풀어야만 탈출할 수 있다.", 2000);
+                } else {
+                    openModal(doorModal);
+                }
+            });
+            closeDoorModalBtn.addEventListener('click', () => closeModal(doorModal));
+            submitDoorPasswordBtn.addEventListener('click', solveDoor);
+
+            // --- Initial Call ---
+            initGame();
+        });
+    </script>
+</body>
+</html>
